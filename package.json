@@ -1,0 +1,20 @@
+{
+  "dependencies": {
+    "child_process": "^1.0.2",
+    "crypto": "^1.0.1",
+    "express": "^5.1.0",
+    "fs": "^0.0.1-security",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^8.3.2"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "name": "openvpn_server_gen",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "server.js",
+  "author": "cns",
+  "license": "ISC",
+  "description": ""
+}
