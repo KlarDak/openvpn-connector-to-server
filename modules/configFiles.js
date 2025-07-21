@@ -1,7 +1,8 @@
 import { exec } from "child_process";
-import { getConfigFolder, getScriptFile } from "./secretGetter.js";
+import { getConfigFolder, getScriptFile, getSecretToken } from "./secretGetter.js";
 import { returnJSON } from "./JSONWorker.js";
 import { constants, access } from "fs";
+import { createExpToken } from "./userToken.js";
 
 export function createConfig(uuid) {
     const __path = getScriptFile() + ` create ${uuid}`;
@@ -23,7 +24,8 @@ export function createConfig(uuid) {
                         return resolve(returnJSON({ code: 404, type: "error", message: "File was not created" }));
                     }
                     
-                    return resolve(returnJSON({ code: 200, type: "data", message: "Success", data: { path: __configPath } }));
+                    const expToken = createExpToken(uuid, 60, getSecretToken());
+                    return resolve(returnJSON({ code: 200, message: "Success", data: { expToken:  expToken}}));
                 });
             });
         });
@@ -42,7 +44,8 @@ export function getConfig(uuid) {
                 resolve(returnJSON({ code: 404, type: "error", message: "File not found" }));
             }
             
-            resolve(returnJSON({ code: 200, type: "data", message: "Success", data: { path: __path } }));
+            const expToken = createExpToken(uuid, 60, getSecretToken());
+            resolve(returnJSON({ code: 200, message: "Success", data: { expToken:  expToken} }));
         });
     });
 }

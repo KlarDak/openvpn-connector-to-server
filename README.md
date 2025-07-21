@@ -59,6 +59,12 @@ DELETE /config/:token
 ```
 **Параметр:** ``token`` - JWT-токен.
 
+*Метод актуален на подверсию ``v1.1.1``*
+```bash
+GET /config/download/:expToken
+```
+**Параметр:** ``expToken`` - временный JWT-токен для скачивания файла.
+
 ## Вспомогательные функции ( module )
 Следующие функции находятся в папке _module_ и задействуются в работе основного скрипта.
 
@@ -80,7 +86,7 @@ return createConfig(uuid);
 
 Если выполнено удачно: 
 ```json 
-{code: 200, data: "Success", data: __configPath }
+{code: 200, status: "Success", expToken: "xxxxxxx-xxxx-xxxx-xxxx" }
 ```
 
 #### getConfig
@@ -96,7 +102,7 @@ return createConfig(uuid);
 
 Если выполнено успешно:
 ```json
-{code: 200, data: "Success", data: __configPath }
+{code: 200, status: "Success", expToken: "xxxxxxx-xxxx-xxxx-xxxx" }
 ```
 
 #### deleteConfig
@@ -112,7 +118,7 @@ return deleteConfig(uuid)
 
 Если выполнено успешно:
 ```json
-{code: 200, data: "Success"}
+{code: 200, status: "Success"}
 ```
 
 ### Пока не добавленные функции
@@ -164,15 +170,15 @@ return returnJSON(json_array);
 
 **Обязательные параметры входного массива:**
 
-1. ``code`` - HTTP-код ответа на запрос
+1. ``code`` - HTTP-код ответа на запрос.
 
-2. ``type`` - тип ответа.
+2. ~~``type`` - тип ответа~~. (не рекомендуется с версии ``v1.1.1``).
 
     _На момент версии ``v1.1`` доступны следующие типы: ``data``, ``error``, ``message``._
 
-3. ``message`` - текст сообщения.
+3. ``status`` - текст сообщения.
 
-**Пример:**
+**Пример:** (актуален на версию ``v1.1``)
 ```js 
 ...
 const json_array = {code: 200, type: "data" message: "Success", data: {path: "newfile.ovpn"}};
@@ -183,6 +189,20 @@ return returnJSON(json_array);
 **Результат:**
 ```json
 {code: 200, data: "Success", path: "newfile.ovpn" }
+```
+
+*На момент версии ``v1.1.1`` изменён синтаксис:*
+- Убран параметр ``type``.
+- Вместо ``message`` - поле ``status``.
+- Вместо ``path`` - поле ``expToken``.
+
+**Синтаксис на данную версию:**
+```js 
+...
+const json_array = {code: 200, status: "Success", data: {expToken: "{expired_token}"}};
+
+return returnJSON(json_array);
+...
 ```
 
 ## userToken.js
@@ -204,7 +224,7 @@ return getUUID(token);
 В случае удачи, возвращает следующий JSON:
 
 ```json
-{ code: 200, data: "Success", userUuid: "xxxxxxx-xxxx-xxxx-xxxx" };
+{ code: 200, status: "Success", userUuid: "xxxxxxx-xxxx-xxxx-xxxx" };
 ```
 
 #### decryptToken
@@ -226,7 +246,7 @@ return decryptToken(token, secret);
 ```
 
 #### validUUID
-Проверка валидности UUID пользователя
+Проверка валидности UUID пользователя.
 
 ```js
 /**
@@ -234,6 +254,22 @@ return decryptToken(token, secret);
  * @return Boolean
  */
 return validUUID(uuid);
+```
+
+#### createExpToken
+Создание одноразового временного токена с использованием UUID и временного промежутка.
+
+*Доступно глобально в версии ``v1.1``, введено в ``v1.1.1``*
+
+```js
+/**
+* @param uuid: string - уникальный UUID пользователя
+* @param time: integer - время действия токена (в секундах)
+* @param secret: string - секретный ключ клиент/сервера
+* @return string
+*/
+
+return createExpToken("xxxxxxx-xxxx-xxxx-xxxx", 60, "xxxxYYYYZZZZ");
 ```
 
 ## secretGetter.js
@@ -266,31 +302,37 @@ return getSeverPort();
 
 ```json
 // Ошибка декодирования токена
-{code: 400, error: "Undefined auth-token"}
+{code: 400, status: "Undefined auth-token"}
 
 // Неправильный UUID
-{code: 400, error: "Invalid UUID-token"}
+{code: 400, status: "Invalid UUID-token"}
 
 // Ошибка генерации конфиг-файла - уже существует
-{code: 409, error: "File was founded and not re-generate"}
+{code: 409, status: "File was founded and not re-generate"}
 
 // Неизвестная ошибка генерации конфиг-файла
-{code: 500, error: "Failed to generate the config-file"}
+{code: 500, status: "Failed to generate the config-file"}
 
 // Конфиг-файл не был создан
-{code: 404, error: "File was not created"}
+{code: 404, status: "File was not created"}
 
 // Ошибка с получением констант из файла окружения
-{code: 401, error: "Error with config paths"} 
+{code: 401, status: "Error with config paths"} 
 
 // Файл не найден 
-{code: 404, error: "File not found"}
+{code: 404, status: "File not found"}
 
 // Неизвестная ошибка при удалении конфиг-файла и его ключей
-{code: 500, error: "Some error has been detected with drop this file. Check logs"}
+{code: 500, status: "Some error has been detected with drop this file. Check logs"}
 
 // Доступ к серверу запрещён по IP-адресу
-{code: 403, error: "Access not allowed!"}
+{code: 403, status: "Access not allowed!"}
+
+// Скачивание файла недоступно на сейчас
+{code: 500, status: "Download file is not available now"}
+
+// Временный токен просрочен
+{code: 403, status: "This token was expired"}
 ```
 
 ## Уведомления об удачном выполнении функции
@@ -300,8 +342,8 @@ return getSeverPort();
 {code: 200, data: "Success", userUuid: "xxxxxx-xxxx-xxxx-xxxx"}
 
 // Удачное удаление файла
-{code: 200, message: "Deleted"}
+{code: 200, status: "Deleted"}
 
 // Удачное получение или генерация файла
-{code: 200, data: "Success", path: "newfile.ovpn"}
+{code: 200, data: "Success", expToken: "xxxxxx-xxxx-xxxx-xxxx"}
 ```

@@ -14,12 +14,7 @@ usersRouter.get("/config/:token", async (req, res) => {
 
     const __configPath = await getConfig(__getUUID.userUuid);
 
-    if (__configPath.code === 200) {
-        return res.download(__configPath.path, getDefaultNameV1());
-    }
-    else {
-        return res.status(__configPath.code).json(__configPath);
-    }
+    return res.status(__configPath.code).json(__configPath);
 });
 
 usersRouter.post("/config", async (req, res) => {
@@ -31,12 +26,8 @@ usersRouter.post("/config", async (req, res) => {
 
     const __configFilePath = await createConfig(__getUUID.userUuid);
 
-    if (__configFilePath.code === 200) {
-        return res.download(__configFilePath.path, getDefaultNameV1());
-    }
-    else {
-        return res.status(__configFilePath.code).json(__configFilePath);
-    }
+    return res.status(__configFilePath.code).json(__configFilePath);
+
 });
 
 usersRouter.put("/config/:token", (req, res) => {
@@ -53,6 +44,27 @@ usersRouter.delete("/config/:token", async (req, res) => {
     const __isDeteled = await deleteConfig(__getUUID.userUuid);
 
     return res.status(__isDeteled.code).json(__isDeteled);
+});
+
+// -----------------------------------------------
+usersRouter.get("/config/download/:token", (req, res) => {
+    try {
+        const __getUUID = getUUID(req.params.token);
+
+        if (__getUUID.code !== 200) {
+            return res.status(__getUUID.code).json(__getUUID);
+        }
+
+        res.download(`/etc/openvpn/clients/${__getUUID.userUuid}.ovpn`, getDefaultNameV1());
+    }
+    catch ($err) {
+        if ($err.name == "TokenExpiredError") {
+            res.status(403).json({code: 403, status: "This token was expired"});
+        }
+        else {
+            res.status(500).json({code: 500, status: "Download file is not available now"});
+        }
+    }
 });
 
 export default usersRouter; 

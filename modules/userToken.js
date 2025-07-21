@@ -31,3 +31,13 @@ export function getUUID(token) {
     else
         return returnJSON({ code: 400, type: "error", message: "Invalid UUID-token" });
 }
+
+// -------------------------------------------
+export function createExpToken(uuid, time, secret) {
+    const payload = {
+        userUuid: uuid,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + time
+    }
+    return jwt.sign(payload, secret);
+}
