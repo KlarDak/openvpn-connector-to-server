@@ -4,9 +4,10 @@
 Следущие требования должны быть соблюдены для запуска системы:
 
 1. NodeJS версии **выше 16**
-2. Дополнения **jsonwebtoken**, **dotenv**. 
-3. Установленный **express**.
-4. Режим выполнения: **module**.
+2. Установленный сервер **Redis**
+3. Дополнения **jsonwebtoken**, **dotenv**. 
+4. Установленный **express**.
+5. Режим выполнения: **module**.
 
 ## Установка обязательных переменных
 
@@ -64,6 +65,26 @@ DELETE /config/:token
 GET /config/download/:expToken
 ```
 **Параметр:** ``expToken`` - временный JWT-токен для скачивания файла.
+
+```http
+GET /configs/check/:token
+```
+**Параметр:** ``token`` - JWT-токен.
+
+```http
+POST /configs/check
+
+{
+    "token": :token,
+    "time": 0
+}
+```
+**Параметры:** ``:token`` - JWT-токен. ``time`` - время работы конфига (в минутах).
+
+```http
+DELETE /configs/check/:token
+```
+**Параметр:** ``token`` - JWT-токен.
 
 ## Вспомогательные функции ( module )
 Следующие функции находятся в папке _module_ и задействуются в работе основного скрипта.
@@ -149,6 +170,71 @@ return recreateConfig(uuid)
 ```
 _Точный возврат пока неизвестен._
 
+## configSetter.js
+Новый файл, введённый с версии API ``v1.1.2``. Связан с работой связки ``API-Redis``.
+
+Работает со временем работы конфиг-файла, задавая серверу OpenVPN параметры при подключении пользователя. Время указывается в ``timestamp`` или ``-1`` для блокировки пользователя.
+
+#### createExpConfig
+
+Устанавливает время работы конфига.
+
+```js
+/**
+ * 
+ * @param uuid: string - UUID пользователя
+ * @param time: int - максимальное время работы конфиг-файла (в минутах)
+ * @return boolean
+ */
+
+return createExpConfig(uuid, time);
+```
+
+#### selectExpConfig
+
+Получает время работы конфига.
+
+```js
+/**
+ * 
+ * @param uuid: string - UUID пользователя
+ * @return integer - время работы конфиг-файла (в минутах)
+ */
+
+return selectExpConfig(uuid);
+```
+
+#### updateExpConfig
+
+Обновляет время работы конфига.
+
+```js
+/**
+ * 
+ * @param uuid: string - UUID пользователя
+ * @param time: integer - Новое время работы конфиг-файла (в минутах)
+ * @return boolean
+ */
+
+return updateExpConfig(uuid, time);
+```
+
+#### deleteExpConfig
+
+Удаляет запись о работе конфига.
+
+**Внимание: для сервера отсутствие записи о работе конфиг-файла означает блокировку его работы и отказ в обслуживании пользователя. При возможности, избегать использования данной команды.**
+
+```js
+/**
+ * 
+ * @param uuid: string - UUID пользователя
+ * @return boolean
+ */
+
+return deleteExpConfig(uuid);
+```
+
 ## JSONWorker.js
 
 Отвечает за структурирование и генерацию ответа в виде JSON.
@@ -208,7 +294,6 @@ return returnJSON(json_array);
 ## userToken.js
 Работает с токеном, получаемым от бота или пользователя.
 
-
 #### getUUID
 Получает уникальный UUID пользователя из полученного токена.
 
@@ -256,6 +341,10 @@ return decryptToken(token, secret);
 return validUUID(uuid);
 ```
 
+## tokenCreator.js
+
+Используется для создания временного токена.
+
 #### createExpToken
 Создание одноразового временного токена с использованием UUID и временного промежутка.
 
@@ -295,6 +384,12 @@ return getServerAddress();
 
 // Возвращает порт сервера
 return getSeverPort();
+
+// Возвращает IP-адрес сервера Redis
+return getRedisHost();
+
+// Возвращает порт сервера Redis
+return getRedisPort();
 ```
 
 ## Виды ошибок
@@ -333,6 +428,18 @@ return getSeverPort();
 
 // Временный токен просрочен
 {code: 403, status: "This token was expired"}
+
+// Неизвестная ошибка при создании записи в Redis
+{ code: 500, status: "Unchecked error" }
+
+// Нед данных о конфиг-файле в Redis
+{ code: 404, status: "The config was not founded"}
+
+// Невалидные параметры времени
+{ code: 400, status: "Invalid time params" }
+
+// Уведомление о просроченном конфиг-файле
+{ code: 404, status: "This config was expired"}
 ```
 
 ## Уведомления об удачном выполнении функции
@@ -346,4 +453,13 @@ return getSeverPort();
 
 // Удачное получение или генерация файла
 {code: 200, data: "Success", expToken: "xxxxxx-xxxx-xxxx-xxxx"}
+
+// Удачная загрузка срока действия конфиг-файла в Redis
+{ code: 200, status: "Uploaded" }
+
+// Удачное получение срока действия конфиг-файла в Redis
+{ code: 200, status: "Success", time: 100}
+
+// Удачное удаление значений о конфиг-файле из Redis
+{ code: 200, status: "Deleted" }
 ```

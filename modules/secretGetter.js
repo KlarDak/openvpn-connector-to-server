@@ -22,6 +22,14 @@ export function getServerPort() {
     return process.env.SERVER_PORT;
 }
 
+export function getRedisHost() {
+    return process.env.REDIS_HOST;
+}
+
+export function getRedisPort() {
+    return process.env.REDIS_PORT;
+}
+
 export function getEnv() {
     return process.env;
 }

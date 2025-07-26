@@ -2,7 +2,7 @@ import { exec } from "child_process";
 import { getConfigFolder, getScriptFile, getSecretToken } from "./secretGetter.js";
 import { returnJSON } from "./JSONWorker.js";
 import { constants, access } from "fs";
-import { createExpToken } from "./userToken.js";
+import { createExpToken } from "./tokenCreator.js";
 
 export function createConfig(uuid) {
     const __path = getScriptFile() + ` create ${uuid}`;
@@ -15,7 +15,7 @@ export function createConfig(uuid) {
                     if (err.code === 2) {
                         return resolve(returnJSON({ code: 409, type: "error", message: "File was founded and not re-generate" }));
                     }
-                    
+                                        
                     return resolve(returnJSON({ code: 500, type: "error", message: "Failed to generate the config-file" }));
                 }
                 

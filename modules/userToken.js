@@ -5,7 +5,6 @@ import { getSecretToken } from './secretGetter.js';
 export function decryptToken(token, secret){
     try {
         const __deToken = jwt.verify(token, secret);
-        
         return __deToken;
     }
     catch(exp) {
@@ -27,17 +26,23 @@ export function getUUID(token) {
     const __validUUID = validUUID(__decodeToken.userUuid);
 
     if (__validUUID)
-        return returnJSON({ code: 200, type: "data", message: "Success", data: { userUuid: __decodeToken.userUuid } });
+        return returnJSON({ code: 200, type: "data", message: "Success", data: { ...__decodeToken } });
     else
         return returnJSON({ code: 400, type: "error", message: "Invalid UUID-token" });
 }
 
-// -------------------------------------------
-export function createExpToken(uuid, time, secret) {
-    const payload = {
-        userUuid: uuid,
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + time
+// For v1.2
+export function getDecryptToken(token) {
+    const __decodeToken = decryptToken(token, getSecretToken());
+
+    if (!__decodeToken) {
+        return returnJSON({ code: 400, message: "Undefined auth-token" });
     }
-    return jwt.sign(payload, secret);
+
+    const __validUUID = validUUID(__decodeToken.userUuid);
+
+    if (__validUUID)
+        return returnJSON({ code: 200, type: "data", message: "Success", data: { ...__decodeToken }});
+    else
+        return returnJSON({ code: 400, type: "error", message: "Invalid UUID-token" });
 }
