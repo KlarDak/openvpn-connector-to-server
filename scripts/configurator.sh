@@ -14,7 +14,7 @@ cat > "$OUTPUT/$2.ovpn" <<EOF
 client
 dev tun
 proto udp
-remote 192.168.1.98 1194
+remote 192.168.157.116 1194
 resolv-retry infinite
 nobind
 
@@ -28,7 +28,7 @@ key-direction 1
 verb 3
 
 <ca>
-$(cat pki/ca.crt)
+$(cat /etc/openvpn/ca.crt)
 </ca>
 <cert>
 $(cat pki/issued/$2.crt)

@@ -1,5 +1,5 @@
 import redis from 'ioredis';
-import { getRedisHost, getRedisPort } from './secretGetter';
+import { getRedisHost, getRedisPort } from './secretGetter.js';
 
 export const Redis = new redis({host: getRedisHost(), port: getRedisPort()});
 
