@@ -1,395 +1,253 @@
-# Серверная часть Telegram-бота для выдачи конфигов сервера
+# openvpn-connector-to-server
 
-## Требования:
-Следущие требования должны быть соблюдены для запуска системы:
+**Уточнение: данный проект - специфическая библиотека, в связи с чем использование для иных проектов, кроме моего, невозможно.**
 
-1. NodeJS версии **выше 16**
-2. Установленный сервер **Redis**
-3. Дополнения **jsonwebtoken**, **dotenv**. 
-4. Установленный **express**.
-5. Режим выполнения: **module**.
+Библиотека с API-роутером для связи с сервером NodeJS и Redis. Реализует доступы по временным JWT-токенам авторизации.
 
-## Установка обязательных переменных
+**Важно:** данная инструкция актуальна на версию от ``v1.1`` до ``v1.2``.
 
-Модуль работает с файлом ``.env``, создающим всё необходимое окружение переменных. 
+## Установка
 
-Список переменных:
+## Установка NodeJS версией 18 и выше
+
+Для работы библиотеки необходим ``NodeJS`` версией 18 и выше.
+
+Для установки, введите следующее:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+sudo apt install nodejs
+```
+
+Проверьте установленную версию:
+```bash
+node -v
+```
+
+Если вы видите ``v18.20.8`` или выше, значит установка прошла успешно.
+
+### Установка сервера Redis
+
+Сервер Redis используется в библиотеке для работы со временем активации конфигов и учётом их блокировки.
+
+Произведите установку **Redis** на сервер:
+
+```bash
+# Для Ubuntu / Debian
+sudo apt update
+sudo apt install redis-server
+
+# Для CentOS
+sudo yum update -y
+sudo yum install redis
+```
+
+После чего - включите **Redis**:
+
+```bash
+sudo systemctl enable redis
+```
+
+### Установка библиотеки
+
+Для установки библиотеки **скачайте себе репозиторий** и перейдите **в скачанную папку**:
 
 ```text
-SERVER_ADDRESS=[ IP-адрес сервера ]
-SERVER_PORT=[ Порт сервера ]
-SECRET_TOKEN=[ Секретный ключ ]
-CONFIG_FOLDER=[ Абсолютный путь к папке с конфигами пользователей ]
-SCRIPT_FILE=[ Абсолютный путь к скрипту запуска ]
-DEFAULT_NAME_V1=[ Дефолтное имя файла конфига (для отправки пользователю) ]
-ALLOWED_ACCESS=[ Разрешённые IP-адреса для доступа к серверу (перечисляются через запятую) ]
+git clone https://github.com/KlarDak/openvpn-connector-to-server
+
+cd openvpn-connector-to-server/
 ```
-Все вышеперечисленные переменные окружения должны быть установлены и доступны.
+Установите все зависимости:
 
-## Способ запуска
+```bash
+npm install
+```
 
-Выполнить в консоли следующее:
+Далее, создайте и заполните ``.env``-файл. Ниже представлен шаблон:
 
+```text
+# Адрес сервера
+SERVER_ADDRESS=
+# Порт сервера
+SERVER_PORT=
+# Секретный токен сервера
+SECRET_TOKEN=
+# Папка с конфиг-файлами
+CONFIG_FOLDER=
+# Ссылка на скрипт генерации конфиг-файлов (должен располагаться в папке /etc/openvpn/scripts/)
+SCRIPT_FILE=
+# Ссылка на файл-коннектор для OpenVPN
+CONNECTOR_FILE=
+# Имя отправляемого конфиг-файла (по-умолчанию)
+DEFAULT_NAME_V1=
+# Допустимые IP-адреса, с которых могут приходить запросы
+ALLOWED_ACCESS=
+# IP-адрес сервера Redis
+REDIS_HOST=
+# Порт сервера Redis
+REDIS_PORT=
+```
+
+### Настройка прав доступа
+
+Скрипт ``configurator.sh`` работает с автоматическим созданием, редактированием и удалением конфиг-файла.
+
+Для его автоматической работы, необходимо **отключить** пароль для ``sudo``.
+
+На версию API ``v1.1`` и её субверсии, рекомендуем загрузить файлы в директорию ``/etc/openvpn/scripts/``. Для этого переместите их из директории ``scripts``, находящейся в ``openvpn-connector-to-server/src/``.
+
+**Важно: ни в коем случае не выполняйте данный скрипт от имени ``root`` пользователя!** Не смотря на то, что данный скрипт был проверен на безопасность, практика использования ``root``-пользователя для данных действий **недопустима** и является заведомо опасной!
+
+Для разрешения выполнения скрипта без пароля, выполните следующее:
+
+```bash
+sudo visudo
+```
+
+В конец открывшегося файла добавьте следующие строки:
+```bash
+# Замените USER на имя вашего пользователя в системе
+USER ALL=(ALL) NOPASSWD: /etc/openvpn/scripts/configurator.sh create *
+USER ALL=(ALL) NOPASSWD: /etc/openvpn/scripts/configurator.sh delete *
+```
+
+После чего сохраните изменения и выйдите из редактора.
+
+Проверьте работу файла, выполнив следующее:
+
+```bash
+# Сбросит "тайм-аут" авторизации в sudo
+sudo -k
+
+cd /etc/openvpn/scripts/
+sudo ./configurator.sh create test
+```
+
+Если выполнение команды ``sudo`` для данного файла не запросит у вас пароль, значит вы сделали всё правильно.
+
+### Запуск сервера
+
+После выполнение всех вышеуказанных действий, запустите сервер:
 ```bash
 node server.js
 ```
-
-При удачном запуске, сервер вернёт ответ:
-
+или
 ```bash
+npm start
+```
+
+В консоль сервера должно быть выведено следующее сообщение:
+```text
 The server has been started!
 ```
 
-## Доступные методы
+**Если этого не произошло, проверьте:**
+1. Открыт ли у вас порт, указанный в файле ``.env``.
+2. Если порт открыт, убедитесь, что он не занят другим процессом.
+3. Проверьте, была ли выполнена команда ``npm install`` и установлены ли все зависимости.
+4. Если проблема с Redis, также проверьте, открыт ли у вас порт, указанный в ``.env``-файле и не занят ли другим процессом.
 
-*Все методы актуальны на версию ``v1.1``*
+## Допустимые запросы
 
-```bash 
-GET /config/:token
-```
+Под капотом реализована стандартная схема **GET / POST / PUT / DELETE**. Способ авторизации - **JWT-токен**.
 
-**Параметр:** ``token`` - JWT-токен.
+### Виды эндпоинтов
 
-```bash
-POST /config
-```
-**В теле обязательный параметр:** ``token`` - JWT-токен.
+Допустимы два варианта **эндпоинта:**
 
-```bash
-DELETE /config/:token
-```
-**Параметр:** ``token`` - JWT-токен.
+``/users/config`` - создание, удаление, обновление и получение конфиг-файла пользователя.
 
-*Метод актуален на подверсию ``v1.1.1``*
-```bash
-GET /config/download/:expToken
-```
-**Параметр:** ``expToken`` - временный JWT-токен для скачивания файла.
+``/configs/check`` - работа со временем активации конфиг-файла: добавление, увеличение / уменьшение, удаление значений.
 
+## Примеры запросов (для конфиг-файлов)
+
+Получение ссылки на временный токен для скачивания конфиг-файла:
 ```http
-GET /configs/check/:token
+GET /users/config/{token}
 ```
-**Параметр:** ``token`` - JWT-токен.
 
+Создание конфиг-файла:
 ```http
-POST /configs/check
-
+POST /users/config
 {
-    "token": :token,
-    "time": 0
+    "token": "{token}"
 }
 ```
-**Параметры:** ``:token`` - JWT-токен. ``time`` - время работы конфига (в минутах).
 
+Удаление конфиг-файла:
 ```http
-DELETE /configs/check/:token
-```
-**Параметр:** ``token`` - JWT-токен.
-
-## Вспомогательные функции ( module )
-Следующие функции находятся в папке _module_ и задействуются в работе основного скрипта.
-
-## configFiles.js
-Отвечает за генерацию, получение, обновление и удаление конфиг-файла.
-
-#### createConfig
-Генерирует конфиг-файл. **Асинхронная функция.**
-
-Синтаксис:
-```js
-/**
- * @param UUID - уникальный UUID пользователя
- * @return JSON - возвращает JSON в любом случае 
- */
-
-return createConfig(uuid);
+DELETE /users/config
+{
+    "token": "{token}"
+}
 ```
 
-Если выполнено удачно: 
-```json 
-{code: 200, status: "Success", expToken: "xxxxxxx-xxxx-xxxx-xxxx" }
+## Пример запроса для скачивания конфиг-файла
+Для выполнения запроса на скачивание файла, нужно сначала **запросить временный токен**, предназначенный для скачивания файла:
+
+```bash
+GET /users/config/{token}
 ```
 
-#### getConfig
-Получение конфиг-файла, если он уже был создан. **Асинхронная функция.**
-```js
-/** 
- *  @param UUID - уникальный UUID пользователя
- *  @return JSON - возвращает JSON в любом случае
- */
+В качестве ответа вы получите ``expToken``. Его нужно использовать для **GET-запроса** к ``/users/config/download``.
 
- return getConfig(uuid);
+```bash
+GET /users/config/download/{token}
 ```
 
-Если выполнено успешно:
+## Примеры запросов (для времени работы)
+
+**Важно:** время и в запросах, и в ответах указывается в **минутах**.
+
+Если в поле ``time`` указано отрицательное значение, значит, что конфиг-файл на данный момент **не обслуживает** пользователя и **является заблокированным**.
+
+Запрос оставшегося времени:
+```bash
+GET /configs/check/{token}
+```
+
+Увеличение / уменьшение времени ответа:
+```http
+POST /configs/check
+{
+    "token": "{token}",
+    "time": 300
+}
+```
+
+Удалить значение времени:
+```http
+DELETE /configs/check
+{
+    "token": "{token}"
+}
+```
+
+## Уведомления об удачном выполнении функции
+
+Следующие ответы возможны при выполнении тех или иных запросов:
+
+### Для запросов по конфиг-файлам
 ```json
-{code: 200, status: "Success", expToken: "xxxxxxx-xxxx-xxxx-xxxx" }
+// Удачное получение или генерация файла
+{"code": 200, "data": "Success", "expToken": "xxxxxx-xxxx-xxxx-xxxx"}
+
+// Удачное удаление файла
+{"code": 200, "status": "Deleted"}
 ```
-
-#### deleteConfig
-Удаляет конфиг-файл с сервера с полным удалением всех связанных ключей. **Асинхронная функция.**
-```js
-/**
- * @param UUID - уникальный UUID пользователя
- * @return JSON - возвращает JSON в любом случае
- */
-
-return deleteConfig(uuid)
-```
-
-Если выполнено успешно:
+### Для запросов по времени работы конфиг-файлов
 ```json
-{code: 200, status: "Success"}
-```
+// Время работы конфиг-файла установлено или обновлено
+{"code": 200, "status": "Uploaded"}
 
-### Пока не добавленные функции
-Следующие функции будут добавлены в API сервера позже.
+// Вывод времени работы конфиг-файла (время указано в минутах)
+{"code": 200, "status": "Success", "time": 100}
 
-#### updateConfig
-Обновляет конфиг-файл. Взаимодействует исключительно с файлом ``*.ovpn``, не затрагивая уже созданные ключи пользователя:
-```js
-/**
- * @param UUID - уникальный UUID пользователя
- * @return JSON - возвращает JSON в любом случае
- */
+// Значение, показывающее, что конфиг-файл просрочен и не работает на данный момент
+{"code": 200, "status": "Success", "time": -1}
 
-return updateConfig(uuid)
-```
-
-_Точный возврат пока неизвестен._
-
-#### recreateConfig
-Пересоздаёт конфиг-файл пользователя и обновляет уже существующие ключи.
-```js
-/**
- * @param UUID - уникальный UUID пользователя
- * @return JSON - возвращает JSON в любом случае
- */
-
-return recreateConfig(uuid)
-```
-_Точный возврат пока неизвестен._
-
-## configSetter.js
-Новый файл, введённый с версии API ``v1.1.2``. Связан с работой связки ``API-Redis``.
-
-Работает со временем работы конфиг-файла, задавая серверу OpenVPN параметры при подключении пользователя. Время указывается в ``timestamp`` или ``-1`` для блокировки пользователя.
-
-#### createExpConfig
-
-Устанавливает время работы конфига.
-
-```js
-/**
- * 
- * @param uuid: string - UUID пользователя
- * @param time: int - максимальное время работы конфиг-файла (в минутах)
- * @return boolean
- */
-
-return createExpConfig(uuid, time);
-```
-
-#### selectExpConfig
-
-Получает время работы конфига.
-
-```js
-/**
- * 
- * @param uuid: string - UUID пользователя
- * @return integer - время работы конфиг-файла (в минутах)
- */
-
-return selectExpConfig(uuid);
-```
-
-#### updateExpConfig
-
-Обновляет время работы конфига.
-
-```js
-/**
- * 
- * @param uuid: string - UUID пользователя
- * @param time: integer - Новое время работы конфиг-файла (в минутах)
- * @return boolean
- */
-
-return updateExpConfig(uuid, time);
-```
-
-#### deleteExpConfig
-
-Удаляет запись о работе конфига.
-
-**Внимание: для сервера отсутствие записи о работе конфиг-файла означает блокировку его работы и отказ в обслуживании пользователя. При возможности, избегать использования данной команды.**
-
-```js
-/**
- * 
- * @param uuid: string - UUID пользователя
- * @return boolean
- */
-
-return deleteExpConfig(uuid);
-```
-
-## JSONWorker.js
-
-Отвечает за структурирование и генерацию ответа в виде JSON.
-
-#### returnJSON
-
-Генерирует структурированный ответ в виде JSON.
-
-```js
-/**
- * @param json_array - JSON-массив данных
- * @return JSON
- */
-
-return returnJSON(json_array);
-```
-
-Возвращает JSON-массив. 
-
-**Обязательные параметры входного массива:**
-
-1. ``code`` - HTTP-код ответа на запрос.
-
-2. ~~``type`` - тип ответа~~. (не рекомендуется с версии ``v1.1.1``).
-
-    _На момент версии ``v1.1`` доступны следующие типы: ``data``, ``error``, ``message``._
-
-3. ``status`` - текст сообщения.
-
-**Пример:** (актуален на версию ``v1.1``)
-```js 
-...
-const json_array = {code: 200, type: "data" message: "Success", data: {path: "newfile.ovpn"}};
-
-return returnJSON(json_array);
-...
-```
-**Результат:**
-```json
-{code: 200, data: "Success", path: "newfile.ovpn" }
-```
-
-*На момент версии ``v1.1.1`` изменён синтаксис:*
-- Убран параметр ``type``.
-- Вместо ``message`` - поле ``status``.
-- Вместо ``path`` - поле ``expToken``.
-
-**Синтаксис на данную версию:**
-```js 
-...
-const json_array = {code: 200, status: "Success", data: {expToken: "{expired_token}"}};
-
-return returnJSON(json_array);
-...
-```
-
-## userToken.js
-Работает с токеном, получаемым от бота или пользователя.
-
-#### getUUID
-Получает уникальный UUID пользователя из полученного токена.
-
-```js
-/**
- * @param token: string - токен от сервера
- * @return JSON
- * 
- */
-return getUUID(token);
-```
-
-В случае удачи, возвращает следующий JSON:
-
-```json
-{ code: 200, status: "Success", userUuid: "xxxxxxx-xxxx-xxxx-xxxx" };
-```
-
-#### decryptToken
-Расшифровывает токен. Требуется секретный код.
-
-```js
-/**
- * @param token: string - уникальный токен пользователя
- * @param secret: string - секретный ключ клиент/сервера
- * @return JSON - в случае удачи
- * @return Boolean - в случае неудачи
- */
-return decryptToken(token, secret);
-```
-
-В случае удачи, на версию ``v1.1`` возвращает следующий JSON:
-```json
-{userUuid: "xxxxxxx-xxxx-xxxx-xxxx"}
-```
-
-#### validUUID
-Проверка валидности UUID пользователя.
-
-```js
-/**
- * @param uuid: string - уникальный UUID пользователя
- * @return Boolean
- */
-return validUUID(uuid);
-```
-
-## tokenCreator.js
-
-Используется для создания временного токена.
-
-#### createExpToken
-Создание одноразового временного токена с использованием UUID и временного промежутка.
-
-*Доступно глобально в версии ``v1.1``, введено в ``v1.1.1``*
-
-```js
-/**
-* @param uuid: string - уникальный UUID пользователя
-* @param time: integer - время действия токена (в секундах)
-* @param secret: string - секретный ключ клиент/сервера
-* @return string
-*/
-
-return createExpToken("xxxxxxx-xxxx-xxxx-xxxx", 60, "xxxxYYYYZZZZ");
-```
-
-## secretGetter.js
-Функции для получения доступа к секретным токенам. 
-
-Все функции возвращают ``string``.
-
-```js
-// Возвращает секретный токен
-return getSecretToken(); 
-
-// Возвращает путь к папке с конфиг-файлами
-return getConfigFolder();
-
-// Возвращает путь к файлу-генератору конфиг-файлов и ключей
-return getScriptFile();
-
-// Возвращает дефолтное имя файла конфига
-return getDefaultNameV1();
-
-// Возвращает IP-адрес сервера
-return getServerAddress();
-
-// Возвращает порт сервера
-return getSeverPort();
-
-// Возвращает IP-адрес сервера Redis
-return getRedisHost();
-
-// Возвращает порт сервера Redis
-return getRedisPort();
+// Удаление записи о работе конфиг-файла в Redis
+{"code": 200, "status": "Deleted"}
 ```
 
 ## Виды ошибок
@@ -397,69 +255,47 @@ return getRedisPort();
 
 ```json
 // Ошибка декодирования токена
-{code: 400, status: "Undefined auth-token"}
+{"code": 400, "status": "Undefined auth-token"}
 
 // Неправильный UUID
-{code: 400, status: "Invalid UUID-token"}
+{"code": 400, "status": "Invalid UUID-token"}
 
 // Ошибка генерации конфиг-файла - уже существует
-{code: 409, status: "File was founded and not re-generate"}
+{"code": 409, "status": "File was founded and not re-generate"}
 
 // Неизвестная ошибка генерации конфиг-файла
-{code: 500, status: "Failed to generate the config-file"}
+{"code": 500, "status": "Failed to generate the config-file"}
 
 // Конфиг-файл не был создан
-{code: 404, status: "File was not created"}
+{"code": 404, "status": "File was not created"}
 
 // Ошибка с получением констант из файла окружения
-{code: 401, status: "Error with config paths"} 
+{"code": 401, "status": "Error with config paths"} 
 
 // Файл не найден 
-{code: 404, status: "File not found"}
+{"code": 404, "status": "File not found"}
 
 // Неизвестная ошибка при удалении конфиг-файла и его ключей
-{code: 500, status: "Some error has been detected with drop this file. Check logs"}
+{"code": 500, "status": "Some error has been detected with drop this file. Check logs"}
 
 // Доступ к серверу запрещён по IP-адресу
-{code: 403, status: "Access not allowed!"}
+{"code": 403, "status": "Access not allowed!"}
 
 // Скачивание файла недоступно на сейчас
-{code: 500, status: "Download file is not available now"}
+{"code": 500, "status": "Download file is not available now"}
 
 // Временный токен просрочен
-{code: 403, status: "This token was expired"}
+{"code": 403, "status": "This token was expired"}
 
 // Неизвестная ошибка при создании записи в Redis
-{ code: 500, status: "Unchecked error" }
+{"code": 500, "status": "Unchecked error" }
 
 // Нед данных о конфиг-файле в Redis
-{ code: 404, status: "The config was not founded"}
+{"code": 404, "status": "The config was not founded"}
 
 // Невалидные параметры времени
-{ code: 400, status: "Invalid time params" }
+{"code": 400, "status": "Invalid time params" }
 
 // Уведомление о просроченном конфиг-файле
-{ code: 404, status: "This config was expired"}
-```
-
-## Уведомления об удачном выполнении функции
-
-```json
-// Удачное получение UUID из токена
-{code: 200, data: "Success", userUuid: "xxxxxx-xxxx-xxxx-xxxx"}
-
-// Удачное удаление файла
-{code: 200, status: "Deleted"}
-
-// Удачное получение или генерация файла
-{code: 200, data: "Success", expToken: "xxxxxx-xxxx-xxxx-xxxx"}
-
-// Удачная загрузка срока действия конфиг-файла в Redis
-{ code: 200, status: "Uploaded" }
-
-// Удачное получение срока действия конфиг-файла в Redis
-{ code: 200, status: "Success", time: 100}
-
-// Удачное удаление значений о конфиг-файле из Redis
-{ code: 200, status: "Deleted" }
+{"code": 404, "status": "This config was expired"}
 ```
